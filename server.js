@@ -1,4 +1,5 @@
 const { ApolloServer, gql } = require("apollo-server")
+const { v4: uuid } = require("uuid")
 
 const products = [
     {
@@ -81,7 +82,9 @@ const typeDefs = gql`
     }
 
     type Mutation {
-        addCategory: Category!
+        addCategory(input: AddCategoryInput!): Category!
+        addProduct(input: AddProductInput!): Product!
+        deleteCategory(id: ID!): Category
     }
 
     type Product {
@@ -100,6 +103,21 @@ const typeDefs = gql`
         name: String!
         products: [Product!]!
     }
+
+    input AddCategoryInput {
+        name: String!
+    }
+
+    input AddProductInput {
+        name: String!
+        description: String!
+        quantity: Int!
+        price: Float!
+        onSale: Boolean!
+        image: String!
+        categoryId: String!
+    }
+
 `;
 
 const resolvers = {
@@ -115,18 +133,53 @@ const resolvers = {
             return categories.find((category)=> category.id === id)
         },
     },
+
     Category: {
         products: (parent, args) => {
             const categoryId = parent.id;
             return products.filter((product)=>product.categoryId === categoryId)
         }
     },
+
     Product: {
         category: (parent) => {
             const categoryId = parent.categoryId;
             return categories.find((category)=>category.id === categoryId)
         }
-    }
+    },
+
+    Mutation : {
+        addCategory: (parent, { input }, context) => {
+            const { name } = input;
+            const newCategory = {
+                id: uuid(),
+                name
+            };
+            categories.push(newCategory);
+            return newCategory;
+        },
+
+        addProduct: (parent, { input }, context) => {
+            const { name, image, price, onSale, quantity, description, categoryId } = input
+            const newProduct = {
+                id: uuid(),
+                name,
+                image,
+                price,
+                onSale,
+                quantity,
+                description,
+                categoryId
+            }
+            products.push(newProduct);
+            return newProduct;
+        },
+
+        deleteCategory: (parent, { id }, context) => {
+            categories = categories.pop((category)=> category.id === id)
+            return categories;
+        }
+    },
 };
 
 const server = new ApolloServer({
